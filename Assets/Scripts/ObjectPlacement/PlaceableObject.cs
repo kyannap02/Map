@@ -50,7 +50,7 @@ public class PlaceableObject : MonoBehaviour
 
         for (int i = 0; i < vertices.Length; i++)
         {
-            Vector3 worldPos = transform.TransformPoint(vertices[i]);
+            Vector3 worldPos = transform.TransformPoint(Vertices[i]);
             vertices[i] = BuildingSystem.current.gridLayout.WorldToCell(worldPos);
         }
 

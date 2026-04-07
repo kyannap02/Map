@@ -242,7 +242,7 @@ public class BuildingSystem : MonoBehaviour
         if (objectToPlace != null)
             objectToPlace.SetColor(new Color(0, 1, 0, 0.5f)); 
 
-        unhighlightButtons();
+        highlightButtons();
     }
 
     private bool CanBePlaced(PlaceableObject placeableObject)
@@ -273,7 +273,14 @@ public class BuildingSystem : MonoBehaviour
             Selected = hit.collider.gameObject;
             objectToPlace = Selected.GetComponent<PlaceableObject>();
             Debug.Log(Selected);
-            Selected.AddComponent<ObjectDrag>();
+            // Reset Placed so double-click doesn't re-trigger Place() immediately,
+            // and so the object can be freely moved again before re-confirming placement.
+            objectToPlace.UpdateState(false, true);
+            // Avoid adding duplicate ObjectDrag components on repeated clicks.
+            if (Selected.GetComponent<ObjectDrag>() == null)
+            {
+                Selected.AddComponent<ObjectDrag>();
+            }
             Vector3Int start = gridLayout.WorldToCell(objectToPlace.GetStartPosition());
             UnfillArea(start, objectToPlace.Size);
             highlightButtons();
