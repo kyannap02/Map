@@ -56,11 +56,23 @@ public class BuildingSystem : MonoBehaviour
         grid = gridLayout.gameObject.GetComponent<Grid>();
     }
 
+    private void OnDestroy()
+    {
+        if (inputManager != null)
+            inputManager.OnExit -= Deselect;
+    }
+
     private void Start()
     {
         Transform transformBtn = content.transform.GetChild(0);
         UnityEngine.UI.Button btn = transformBtn.GetComponent<UnityEngine.UI.Button>();
         defaultColor = btn.GetComponent<UnityEngine.UI.Image>().color;
+
+        if (scaleSlider != null)
+            scaleSlider.onValueChanged.AddListener(UpdateScale);
+
+        if (inputManager != null)
+            inputManager.OnExit += Deselect;
 
         unhighlightButtons();
 
@@ -68,7 +80,7 @@ public class BuildingSystem : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && !inputManager.IsPointerOverUI())
         {
             if (IsDoubleClick())
             {
@@ -77,6 +89,10 @@ public class BuildingSystem : MonoBehaviour
                     objectToPlace.Place();
                     Vector3Int start = gridLayout.WorldToCell(objectToPlace.GetStartPosition());
                     TakeArea(start, objectToPlace.Size);
+                    objectToPlace = null;
+                    Selected = null;
+                    lastClickTime = 0f;
+                    unhighlightButtons();
                 }
             }
             else
@@ -88,7 +104,6 @@ public class BuildingSystem : MonoBehaviour
         if (scaleSlider != null && objectToPlace != null)
         {
             scaleSlider.value = objectToPlace.transform.localScale.x;
-            scaleSlider.onValueChanged.AddListener(UpdateScale);
         }
 
         if (!objectToPlace)
@@ -169,8 +184,9 @@ public class BuildingSystem : MonoBehaviour
     {
         if (Selected)
         {
-            Destroy(objectToPlace.gameObject);
+            Destroy(Selected);
             Selected = null;
+            objectToPlace = null;
             unhighlightButtons();
         }
     }
@@ -182,10 +198,11 @@ public class BuildingSystem : MonoBehaviour
             if (CanBePlaced(objectToPlace))
             {
                 objectToPlace.Place();
-                Selected = null;
-                unhighlightButtons();
                 Vector3Int start = gridLayout.WorldToCell(objectToPlace.GetStartPosition());
                 TakeArea(start, objectToPlace.Size);
+                Selected = null;
+                objectToPlace = null;
+                unhighlightButtons();
             }
         }
     }
@@ -265,6 +282,8 @@ public class BuildingSystem : MonoBehaviour
 
     private void SelectObject()
     {
+        if (ClickToDelete.IsDeleteModeActive) return;
+
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
 
@@ -272,7 +291,6 @@ public class BuildingSystem : MonoBehaviour
         {
             Selected = hit.collider.gameObject;
             objectToPlace = Selected.GetComponent<PlaceableObject>();
-            Debug.Log(Selected);
             // Reset Placed so double-click doesn't re-trigger Place() immediately,
             // and so the object can be freely moved again before re-confirming placement.
             objectToPlace.UpdateState(false, true);
@@ -285,6 +303,13 @@ public class BuildingSystem : MonoBehaviour
             UnfillArea(start, objectToPlace.Size);
             highlightButtons();
         }
+    }
+
+    public void Deselect()
+    {
+        Selected = null;
+        objectToPlace = null;
+        unhighlightButtons();
     }
 
     public void TakeArea(Vector3Int start, Vector3Int size)
